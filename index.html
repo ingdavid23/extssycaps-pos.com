@@ -6,6 +6,7 @@
   <title>Sistema POS</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -46,6 +47,23 @@
       body * { visibility: hidden !important; }
       #printable-ticket, #printable-ticket * { visibility: visible !important; }
       #printable-ticket {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-shadow: none !important;
+      }
+      @page { margin: 0; }
+    }
+
+    /* REGLAS PARA IMPRESORA TÉRMICA Y ETIQUETAS */
+    @media print {
+      body * { visibility: hidden !important; }
+      #printable-ticket, #printable-ticket * { visibility: visible !important; }
+      #printable-barcode, #printable-barcode * { visibility: visible !important; }
+      #printable-ticket, #printable-barcode {
         position: absolute;
         left: 0;
         top: 0;
@@ -250,6 +268,66 @@ tailwind.config = {
    </div>
   </div>
 
+  <!-- 👇 PEGA EL MODAL DEL CÓDIGO DE BARRAS AQUÍ 👇 -->
+  <div id="barcode-modal" class="fixed inset-0 z-[10000] hidden items-center justify-center p-4" style="background:rgba(0,0,0,.8)">
+    <div class="bg-surface rounded-2xl p-6 max-w-sm w-full mx-auto modal-show flex flex-col items-center border border-card shadow-2xl">
+      <h2 class="text-xl font-bold mb-4 text-center flex items-center gap-2"><i data-lucide="barcode" class="w-5 h-5 text-accent"></i> Etiqueta de Producto</h2>
+      
+      <!-- Contenedor blanco para que el escáner pueda leer el código negro -->
+      <div id="printable-barcode" class="bg-white p-4 rounded-lg flex flex-col items-center justify-center w-full mb-5 shadow-inner">
+         <div id="barcode-prod-name" class="font-bold text-black text-sm mb-2 text-center uppercase tracking-tight"></div>
+         <svg id="barcode-svg" class="max-w-full"></svg>
+      </div>
+      
+      <div class="w-full flex gap-3 print:hidden">
+        <button type="button" id="close-barcode" class="flex-1 bg-card text-muted font-semibold py-2.5 rounded-lg hover:bg-surface transition border border-card">Cerrar</button>
+        <button type="button" onclick="window.print()" class="flex-1 bg-accent text-white font-semibold py-2.5 rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2 shadow-lg"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
+      </div>
+    </div>
+  </div>
+  <!-- ☝️ HASTA AQUÍ ☝️ -->
+
+
+  <div id="layaway-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center p-4" style="background:rgba(0,0,0,.8)">
+    <div class="bg-surface rounded-2xl p-6 max-w-sm w-full mx-auto modal-show flex flex-col items-center border border-card shadow-2xl">
+      <h2 class="text-xl font-bold mb-4 text-warn flex items-center gap-2"><i data-lucide="package" class="w-5 h-5"></i> Nuevo Apartado</h2>
+      <div class="w-full space-y-3">
+         <div><label class="text-xs text-muted">Nombre del Cliente *</label><input id="layaway-client" class="w-full bg-card border border-card rounded-lg px-3 py-2 text-sm focus:border-warn focus:outline-none" placeholder="Ej. Juan Pérez"></div>
+         <div><label class="text-xs text-muted">Teléfono / WhatsApp</label><input id="layaway-phone" type="number" class="w-full bg-card border border-card rounded-lg px-3 py-2 text-sm focus:border-warn focus:outline-none" placeholder="Opcional"></div>
+         <div class="p-4 bg-warn/10 rounded-xl border border-warn/30">
+            <div class="flex justify-between text-sm font-bold mb-3"><span>Total del Carrito:</span> <span id="layaway-total-display" class="text-lg">$0.00</span></div>
+            <label class="text-xs text-warn font-bold block mb-1">Anticipo que deja hoy (Efectivo)</label>
+            <input id="layaway-advance" type="number" step="0.01" class="w-full bg-surface border-2 border-warn/50 rounded-lg px-3 py-2 text-xl font-bold text-center focus:border-warn focus:outline-none" placeholder="0.00">
+         </div>
+      </div>
+      <div class="w-full flex gap-3 mt-6">
+        <button type="button" id="layaway-cancel" class="flex-1 bg-card text-muted font-semibold py-2.5 rounded-lg hover:bg-surface transition">Cancelar</button>
+        <button type="button" id="layaway-confirm" class="flex-1 bg-warn text-bg font-bold py-2.5 rounded-lg hover:opacity-90 transition">Guardar Apartado</button>
+      </div>
+    </div>
+ </div>
+
+ <div id="pay-layaway-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center p-4" style="background:rgba(0,0,0,.8)">
+  <div class="bg-surface rounded-2xl p-6 max-w-sm w-full mx-auto modal-show flex flex-col items-center border border-card shadow-2xl">
+    <h2 class="text-xl font-bold mb-4 text-success flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> Abonar / Liquidar</h2>
+    <div class="w-full space-y-2 mb-4 text-center">
+       <p id="pay-layaway-client" class="font-bold text-lg text-txt"></p>
+       <div class="flex justify-between text-sm text-muted mt-4"><span>Costo Total:</span><span id="pay-layaway-total" class="font-bold"></span></div>
+       <div class="flex justify-between text-sm text-muted"><span>Total Abonado:</span><span id="pay-layaway-adv" class="font-bold"></span></div>
+       <div class="flex justify-between text-xl font-extrabold text-warn mt-3 pt-3 border-t border-card"><span>Resta pagar:</span><span id="pay-layaway-rem"></span></div>
+       
+       <div class="mt-4 text-left">
+          <label class="text-xs text-success font-bold block mb-1">Monto a abonar hoy (Efectivo)</label>
+          <input id="pay-layaway-amount" type="number" step="0.01" class="w-full bg-surface border-2 border-success/50 rounded-lg px-3 py-2 text-xl font-bold text-center focus:border-success focus:outline-none" placeholder="0.00">
+       </div>
+    </div>
+    <div class="w-full flex gap-3 mt-2">
+      <button type="button" id="pay-layaway-cancel" class="flex-1 bg-card text-muted font-semibold py-2.5 rounded-lg hover:bg-surface transition">Cancelar</button>
+      <button type="button" id="pay-layaway-confirm" class="flex-1 bg-success text-white font-bold py-2.5 rounded-lg hover:opacity-90 transition">Registrar Pago</button>
+    </div>
+  </div>
+</div>
+
   <script type="module">
    // Función de COMPRESIÓN EXTREMA para Firebase
    // Función de COMPRESIÓN BALANCEADA para Productos
@@ -357,7 +435,8 @@ function getColeccion(tipo) {
     'category': 'categorias',
     'config': 'configuracion',
     'sys_file': 'archivos_sistema',
-    'bulk_material': 'insumos_granel' // <-- ESTA LÍNEA ES VITAL
+    'bulk_material': 'insumos_granel',
+    'layaway': 'apartados' // <-- NUEVA COLECCIÓN PARA APARTADOS
   };
   return map[tipo] || 'registros_generales';
 }
@@ -776,6 +855,7 @@ document.getElementById('pin-confirm').onclick = () => {
   }
 };
 // ========== RENDERING ==========
+// ========== RENDERING ==========
 const app = document.getElementById('app');
 
 function render() {
@@ -794,6 +874,7 @@ function render() {
     case 'cashier-pos': renderCashierPOS(); break;
     case 'cashier-history': renderCashierPOS(); break;
     case 'cashier-close': renderCashierPOS(); break;
+    case 'cashier-layaway': renderCashierPOS(); break; /* <-- ESTA LÍNEA ES LA SOLUCIÓN */
     default: renderLogin();
   }
   lucide.createIcons();
@@ -1089,9 +1170,18 @@ function renderInventory(container) {
     const list = document.getElementById('inv-list');
     if (!list) return;
     
-    list.innerHTML = filtered.length ? filtered.map(p => `
+    list.innerHTML = filtered.length ? filtered.map(p => {
+      // Lógica para saber si tiene código o mostrar el botón de generar
+      let codeHtml = '';
+      if (p.code) {
+         codeHtml = `<button type="button" onclick="window.showBarcode('${p.id}')" class="flex items-center gap-1.5 text-xs text-muted bg-card border border-card px-2.5 py-1 rounded-lg hover:text-accent hover:border-accent/30 transition group" title="Imprimir Código"><span>${p.code}</span><i data-lucide="printer" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></i></button>`;
+      } else {
+         codeHtml = `<button type="button" onclick="window.generateBarcode('${p.id}')" class="text-[10px] bg-warn/10 text-warn border border-warn/30 px-2.5 py-1 rounded-lg hover:bg-warn hover:text-white transition font-bold flex items-center gap-1 shadow-sm"><i data-lucide="zap" class="w-3 h-3 pointer-events-none"></i> Generar</button>`;
+      }
+
+      return `
       <tr class="border-b border-card/50 hover:bg-card/30 transition">
-        <td class="py-3"><span class="text-xs text-muted bg-card px-2 py-0.5 rounded">${p.code||'-'}</span></td>
+        <td class="py-3">${codeHtml}</td>
         <td class="py-3 font-medium">${p.name}</td>
         <td class="py-3"><span class="text-xs bg-accent2/20 text-accent2 px-2 py-0.5 rounded-full">${p.category||'Sin categoría'}</span></td>
         <td class="py-3">${currency(p.buy_price)}</td>
@@ -1113,9 +1203,58 @@ function renderInventory(container) {
             </button>
           </div>
         </td>
-      </tr>`).join('') : '<tr><td colspan="7" class="py-8 text-center text-muted">No hay productos.</td></tr>';
+      </tr>`;
+    }).join('') : '<tr><td colspan="7" class="py-8 text-center text-muted">No hay productos.</td></tr>';
     lucide.createIcons();
   }
+
+  // === FUNCIONES GLOBALES PARA EL CÓDIGO DE BARRAS ===
+  window.generateBarcode = async (id) => {
+     const prod = records('product').find(p => p.id === id);
+     if(!prod) return;
+     
+     // Genera un código numérico único de 12 dígitos aleatorios
+     const newCode = Math.floor(Math.random() * 899999999999 + 100000000000).toString();
+     prod.code = newCode;
+     
+     // Guardamos en Firebase
+     await dbSdk.update(prod);
+     showToast('Código de barras generado', 'success');
+     
+     // Actualizamos tabla y abrimos el modal para imprimir
+     renderList();
+     window.showBarcode(id);
+  };
+
+  window.showBarcode = (id) => {
+     const prod = records('product').find(p => p.id === id);
+     if(!prod || !prod.code) return;
+     
+     document.getElementById('barcode-prod-name').textContent = prod.name;
+     
+     // Usar JsBarcode para dibujar la imagen
+     JsBarcode("#barcode-svg", prod.code, {
+        format: "CODE128", // Formato universal compatible con escáneres
+        lineColor: "#000000",
+        width: 2,
+        height: 50,
+        displayValue: true,
+        fontSize: 14,
+        margin: 0
+     });
+     
+     const modal = document.getElementById('barcode-modal');
+     modal.classList.remove('hidden');
+     modal.classList.add('flex');
+     lucide.createIcons();
+  };
+
+  // Botón para cerrar el modal
+  document.getElementById('close-barcode').onclick = () => {
+     document.getElementById('barcode-modal').classList.add('hidden');
+     document.getElementById('barcode-modal').classList.remove('flex');
+  };
+  // ====================================================
 
   function renderBMList() {
     const containerBM = document.getElementById('bm-list-container');
@@ -2377,6 +2516,9 @@ function renderSettings(container) {
   lucide.createIcons();
 }
 
+
+
+
 function renderCashierPOS() {
   const products = records('product');
 
@@ -2388,15 +2530,13 @@ function renderCashierPOS() {
       initialCash = parseFloat(liveUser.initial_cash) || 0;
       sessionStart = liveUser.session_start || null;
       
-      // Actualizamos la memoria del celular para que coincida con la PC
       localStorage.setItem(`pos_register_open_${currentUser.username}`, cashRegisterOpen);
       localStorage.setItem(`pos_initial_cash_${currentUser.username}`, initialCash);
       if(sessionStart) localStorage.setItem(`pos_session_start_${currentUser.username}`, sessionStart);
     }
   }
-  // ============================================================
 
-  // === Proteger todas las pestañas y restaurar diseño Andy Candy ===
+  // === Proteger todas las pestañas y restaurar diseño ===
   if (!cashRegisterOpen && currentView.startsWith('cashier-')) {
     app.innerHTML = `
    <div class="h-full w-full flex items-center justify-center p-4" style="background: linear-gradient(135deg, #000000 0%, #1a0000 50%, #000000 100%);">
@@ -2422,7 +2562,6 @@ function renderCashierPOS() {
       localStorage.setItem(`pos_initial_cash_${currentUser.username}`, initialCash);
       localStorage.setItem(`pos_session_start_${currentUser.username}`, sessionStart);
       
-      // === LA VERDADERA MAGIA: Crear al usuario si es un usuario "Fantasma" ===
       const liveUser = records('user').find(u => u.name === currentUser.username);
       if (liveUser) {
         await dbSdk.update({ 
@@ -2432,20 +2571,12 @@ function renderCashierPOS() {
           initial_cash: initialCash 
         });
       } else {
-        // Si el cajero no existía en la base de datos (ej. cajero1), LO CREAMOS
         await dbSdk.create({
-          type: 'user',
-          name: currentUser.username,
-          code: currentUser.password || '1234',
-          description: currentUser.name || 'Cajero',
-          status: currentUser.role || 'cashier',
-          session_open: true,
-          session_start: sessionStart,
-          initial_cash: initialCash
+          type: 'user', name: currentUser.username, code: currentUser.password || '1234',
+          description: currentUser.name || 'Cajero', status: currentUser.role || 'cashier',
+          session_open: true, session_start: sessionStart, initial_cash: initialCash
         });
       }
-      // ========================================================================
-
       render();
     };
     
@@ -2459,16 +2590,14 @@ function renderCashierPOS() {
 
   let searchTerm = '';
   let paymentMethod = 'Efectivo';
-  let currentPosCategory = ''; // Guarda la categoría activa
-  let showTab = currentView === 'cashier-history' ? 'history' : currentView === 'cashier-close' ? 'close' : 'pos';
+  let currentPosCategory = ''; 
+  let showTab = currentView === 'cashier-history' ? 'history' : currentView === 'cashier-close' ? 'close' : currentView === 'cashier-layaway' ? 'layaways' : 'pos';
 
   function cartTotal() { return cart.reduce((a,i)=>a+i.sell_price*i.qty,0); }
 
-  // === NUEVO: CÁLCULO DE EFECTIVO EN CAJA ===
   const mySales = records('sale').filter(s => s.cashier === (currentUser?.username||'') && sessionStart && s.date >= sessionStart);
   const cashSales = mySales.filter(s=>s.payment_method==='Efectivo').reduce((a,s)=>a+(s.total||0),0);
   const expectedCash = initialCash + cashSales;
-  // ==========================================
 
   app.innerHTML = `
   <div class="h-full w-full flex flex-col" style="min-height:100%;">
@@ -2484,6 +2613,7 @@ function renderCashierPOS() {
       </div>
       <div class="flex items-center gap-2 shrink-0 ml-4">
         <button data-tab="pos" class="text-sm px-3 py-1.5 rounded-lg transition ${showTab==='pos'?'bg-accent text-white font-semibold shadow-md':'text-txt hover:bg-surface/50'}">Venta</button>
+        <button data-tab="layaways" class="text-sm px-3 py-1.5 rounded-lg transition ${showTab==='layaways'?'bg-warn text-white font-semibold shadow-md':'text-txt hover:bg-surface/50'}">Apartados</button>
         <button data-tab="history" class="text-sm px-3 py-1.5 rounded-lg transition ${showTab==='history'?'bg-accent text-white font-semibold shadow-md':'text-txt hover:bg-surface/50'}">Historial</button>
         <button data-tab="close" class="text-sm px-3 py-1.5 rounded-lg transition ${showTab==='close'?'bg-warn text-white font-semibold shadow-md':'text-txt hover:bg-surface/50'}">Cerrar Caja</button>
         <button id="cashier-logout" class="text-txt hover:text-danger transition ml-2 bg-surface/50 p-1.5 rounded-lg shadow-sm"><i data-lucide="log-out" class="w-4 h-4"></i></button>
@@ -2497,7 +2627,7 @@ function renderCashierPOS() {
   document.querySelectorAll('[data-tab]').forEach(b => {
     b.onclick = () => {
       showTab = b.dataset.tab;
-      currentView = showTab==='history'?'cashier-history':showTab==='close'?'cashier-close':'cashier-pos';
+      currentView = showTab==='history'?'cashier-history':showTab==='close'?'cashier-close':showTab==='layaways'?'cashier-layaway':'cashier-pos';
       localStorage.setItem('pos_view', currentView);
       render(); 
     };
@@ -2512,6 +2642,7 @@ function renderCashierPOS() {
   function renderTabContent() {
     if (showTab === 'history') renderCashierHistory();
     else if (showTab === 'close') renderCashierClose();
+    else if (showTab === 'layaways') renderLayaways(); 
     else renderPOSView();
     lucide.createIcons();
   }
@@ -2548,10 +2679,13 @@ function renderCashierPOS() {
             <button data-pay="Transfer" class="flex-1 py-2 rounded-lg text-sm font-semibold transition ${paymentMethod==='Transfer'?'bg-accent2 text-white':'bg-card text-muted hover:bg-bg'}">Transfer</button>
           </div>
           
-          <button id="checkout-btn" class="w-full bg-warn text-white font-bold py-3 rounded-lg hover:opacity-90 transition ${cart.length?'':'opacity-50 cursor-not-allowed'}" ${cart.length?'':'disabled'}>
+          <button id="checkout-btn" class="w-full bg-success text-white font-bold py-3 rounded-lg hover:opacity-90 transition ${cart.length?'':'opacity-50 cursor-not-allowed'}" ${cart.length?'':'disabled'}>
             Cobrar ${currency(cartTotal())}
           </button>
           
+          <button id="layaway-init-btn" class="w-full bg-warn text-bg font-bold py-2.5 rounded-lg hover:opacity-90 transition mt-2 ${cart.length?'':'opacity-50 cursor-not-allowed'}" ${cart.length?'':'disabled'}>
+            Hacer Apartado
+          </button>
           <button id="clear-cart" class="w-full text-muted text-sm hover:text-danger transition py-1 mt-2">Vaciar carrito</button>
         </div>
       </div>
@@ -2561,10 +2695,8 @@ function renderCashierPOS() {
     renderProducts();
     renderCartItems();
 
-    // === AQUÍ PEGAS LA NUEVA FUNCIÓN ===
     window.updateCashBadge = () => {
       if (!sessionStart) return;
-      // Calcula las ventas más recientes directamente de la base de datos
       const liveSales = records('sale').filter(s => s.cashier === (currentUser?.username||'') && s.date >= sessionStart);
       const liveCash = liveSales.filter(s=>s.payment_method==='Efectivo').reduce((a,s)=>a+(s.total||0),0);
       
@@ -2577,44 +2709,45 @@ function renderCashierPOS() {
 
     const posSearch = document.getElementById('pos-search');
 
-    posSearch.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const code = posSearch.value.trim();
-        if (!code) return;
+    if(posSearch) {
+      posSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const code = posSearch.value.trim();
+          if (!code) return;
 
-        const product = records('product').find(p => 
-          p.code === code || p.code === code.toUpperCase() || p.code === code.toLowerCase()
-        );
+          const product = records('product').find(p => 
+            p.code === code || p.code === code.toUpperCase() || p.code === code.toLowerCase()
+          );
 
-        if (product) {
-          if (product.stock > 0) {
-            const existing = cart.find(c => c.id === product.id);
-            if (existing) {
-              if (existing.qty < product.stock) {
-                existing.qty++;
-                showToast(`+1 ${product.name}`);
+          if (product) {
+            if (product.stock > 0) {
+              const existing = cart.find(c => c.id === product.id);
+              if (existing) {
+                if (existing.qty < product.stock) {
+                  existing.qty++;
+                  showToast(`+1 ${product.name}`);
+                } else {
+                  showToast('Sin stock suficiente', 'warn');
+                }
               } else {
-                showToast('Sin stock suficiente', 'warn');
+                cart.push({ id: product.id, name: product.name, sell_price: product.sell_price, buy_price: product.buy_price || 0, qty: 1, maxStock: product.stock });
+                showToast(`${product.name} añadido`);
               }
+              posSearch.value = ''; 
+              renderPOSView(); 
             } else {
-              cart.push({ id: product.id, name: product.name, sell_price: product.sell_price, buy_price: product.buy_price || 0, qty: 1, maxStock: product.stock });
-              showToast(`${product.name} añadido`);
+              showToast('Producto sin stock', 'error');
+              posSearch.value = '';
             }
-            posSearch.value = ''; 
-            renderPOSView(); 
           } else {
-            showToast('Producto sin stock', 'error');
-            posSearch.value = '';
+            showToast('Producto no encontrado', 'warn');
+            posSearch.select(); 
           }
-        } else {
-          showToast('Producto no encontrado', 'warn');
-          posSearch.select(); 
         }
-      }
-    });
-
-    posSearch.addEventListener('input', () => { renderProducts(); });
+      });
+      posSearch.addEventListener('input', () => { renderProducts(); });
+    }
 
     document.querySelectorAll('[data-pay]').forEach(b => {
       b.onclick = () => { paymentMethod = b.dataset.pay; renderPOSView(); };
@@ -2622,7 +2755,6 @@ function renderCashierPOS() {
     document.getElementById('clear-cart').onclick = () => { cart = []; renderPOSView(); };
     document.getElementById('checkout-btn').onclick = openPaymentModal;
     
-    // === ESCUDO ANTI-PÉRDIDA DE FOCO ===
     posContent.onclick = (e) => {
       if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
         const search = document.getElementById('pos-search');
@@ -2640,10 +2772,23 @@ function renderCashierPOS() {
         }
       }
     };
-    // ===================================
+
+    // BOTÓN: INICIAR APARTADO DESDE CARRITO
+    const layawayInitBtn = document.getElementById('layaway-init-btn');
+    if (layawayInitBtn) {
+      layawayInitBtn.onclick = () => {
+        if(!cart.length) return;
+        document.getElementById('layaway-total-display').textContent = currency(cartTotal());
+        document.getElementById('layaway-advance').value = '';
+        document.getElementById('layaway-client').value = '';
+        document.getElementById('layaway-phone').value = '';
+        document.getElementById('layaway-modal').classList.remove('hidden');
+        document.getElementById('layaway-modal').classList.add('flex');
+      };
+    }
     
     lucide.createIcons();
-    setTimeout(() => posSearch.focus(), 100);
+    if(posSearch) setTimeout(() => posSearch.focus(), 100);
   }
 
   function renderPosCategories() {
@@ -2656,27 +2801,22 @@ function renderCashierPOS() {
     container.innerHTML = allCats.map(c => {
        const val = c.id === 'all' ? '' : c.name;
        const isSelected = currentPosCategory === val;
-       // CAMBIO AQUÍ: Blancos inactivos, magenta brillante activos
        const bgClass = isSelected ? 'bg-accent text-white font-bold shadow-md' : 'bg-surface text-txt hover:bg-card border border-card shadow-sm';
        return `<button data-cat-filter="${val}" class="whitespace-nowrap px-4 py-2 rounded-xl text-sm transition ${bgClass}">${c.name}</button>`;
     }).join('');
 
     container.querySelectorAll('[data-cat-filter]').forEach(btn => {
        btn.onclick = () => {
-          currentPosCategory = btn.dataset.catFilter;
-          renderPosCategories(); // Actualiza los colores de los botones
-          renderProducts();      // Filtra la cuadrícula abajo
-          
-          // MAGIA: Regresar el cursor (foco) a la barra de búsqueda para el escáner
-          const searchInput = document.getElementById('pos-search');
-          if (searchInput) {
-            searchInput.focus();
-          }
+         currentPosCategory = btn.dataset.catFilter;
+         renderPosCategories(); 
+         renderProducts();      
+         const searchInput = document.getElementById('pos-search');
+         if (searchInput) {
+           searchInput.focus();
+         }
        };
     });
   }
-
-  
 
   function renderProducts() {
     const container = document.getElementById('pos-products');
@@ -2837,7 +2977,6 @@ function renderCashierPOS() {
       const dateOpts = { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
       const dateTime = new Date().toLocaleString('es-MX', dateOpts);
 
-      // 1. ACTUALIZAR EL INVENTARIO AL INSTANTE (RAM y Nube)
       for (const item of cart) {
         const prodRec = allRecords.find(r => r.id === item.id);
         if (prodRec) {
@@ -2846,36 +2985,20 @@ function renderCashierPOS() {
         }
       }
 
-      // 2. AGRUPAR TODO EN UN SOLO TICKET (1 sola escritura)
       const newTicket = {
-        type: 'sale',
-        ticket_num: ticketNum,
-        cashier: currentUser?.username || 'cajero',
-        date: now(),
-        total: total, // Importante para las finanzas
-        order_total: total,
-        payment_method: paymentMethod,
-        cash_received: cashReceived,
-        change_returned: cashReceived - total,
-        status: 'completed',
-        // ¡Aquí guardamos los artículos como una lista!
+        type: 'sale', ticket_num: ticketNum, cashier: currentUser?.username || 'cajero',
+        date: now(), total: total, order_total: total, payment_method: paymentMethod,
+        cash_received: cashReceived, change_returned: cashReceived - total, status: 'completed',
         items: cart.map(item => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.qty,
-          sell_price: item.sell_price,
-          total: item.sell_price * item.qty
+          id: item.id, name: item.name, quantity: item.qty, sell_price: item.sell_price, total: item.sell_price * item.qty
         }))
       };
 
-      // Guardar en Firebase y en RAM local
       dbSdk.create(newTicket);
       allRecords.push({...newTicket, id: 'temp_' + genId()});
 
-      // 3. REDIBUJAR PANTALLA INMEDIATAMENTE
       if (typeof renderProducts === 'function') renderProducts();
 
-      // --- DE AQUÍ EN ADELANTE SIGUE LA CREACIÓN HTML DEL TICKET ---
       const itemsHtml = cart.map(item => `
         <div class="flex justify-between items-start">
           <span class="w-8">${item.qty}x</span>
@@ -2927,7 +3050,6 @@ function renderCashierPOS() {
       `;
 
       document.getElementById('printable-ticket').innerHTML = ticketHtml;
-
       document.getElementById('cash-payment-modal').classList.remove('flex');
       document.getElementById('cash-payment-modal').classList.add('hidden');
       
@@ -2938,16 +3060,13 @@ function renderCashierPOS() {
       btnConfirm.textContent = 'PAGAR';
       btnConfirm.disabled = false; 
 
-     // === LÓGICA PARA WHATSAPP: MOSTRAR Y ENVIAR ===
      const btnWa = document.getElementById('btn-wa-ticket');
       const waContainer = document.getElementById('wa-input-container');
       const waInput = document.getElementById('wa-number-input');
       
       btnWa.style.display = 'flex'; 
       waContainer.style.display = 'block'; 
-      waInput.value = ''; // Limpiar recuadro para nueva venta
-
-      // NUEVA LÍNEA: Quita la expansión para que quepan los dos botones
+      waInput.value = ''; 
       document.getElementById('btn-print-ticket').classList.remove('col-span-2');
       const waText = `*${bizName()}*\n` +
         `TICKET DE VENTA\n` +
@@ -2963,17 +3082,12 @@ function renderCashierPOS() {
         `¡GRACIAS POR SU COMPRA!`;
 
       btnWa.onclick = () => {
-        // Leemos el valor directo del input (sin usar prompt)
         const cleanNumber = waInput.value.replace(/\D/g, '');
-        
-        // Generamos la URL. Al ser un clic directo, el navegador no lo bloquea.
         const url = cleanNumber 
           ? `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(waText)}` 
           : `https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`;
-        
         window.open(url, '_blank');
       };
-      // ==============================================
       
       document.getElementById('receipt-close').onclick = () => {
         document.getElementById('receipt-modal').classList.remove('flex');
@@ -2996,22 +3110,14 @@ function renderCashierPOS() {
     const mySales = records('sale').filter(s => s.cashier === (currentUser?.username||''));
     const todayMySales = mySales.filter(s => sessionStart && s.date >= sessionStart);
     
-    // === Agrupar por Tickets para el Cajero ===
     const ticketMap = new Map();
     todayMySales.forEach(s => {
       const tId = s.ticket_num || s.id;
       if(!ticketMap.has(tId)) {
         ticketMap.set(tId, {
-          id: s.id, 
-          ticket_num: s.ticket_num,
-          date: s.date,
-          payment_method: s.payment_method,
-          order_total: s.order_total || s.total,
-          raw_sales: []
+          id: s.id, ticket_num: s.ticket_num, date: s.date, payment_method: s.payment_method, order_total: s.order_total || s.total, raw_sales: []
         });
       }
-      
-      // 🔥 SOLUCIÓN: Magia de desempaquetado para Súper-Tickets y ventas viejas
       if (s.items && Array.isArray(s.items)) {
         ticketMap.get(tId).raw_sales.push(...s.items);
       } else {
@@ -3020,7 +3126,6 @@ function renderCashierPOS() {
     });
     
     const groupedSales = Array.from(ticketMap.values()).sort((a,b) => new Date(b.date) - new Date(a.date));
-    // ==========================================
 
     posContent.innerHTML = `
     <div class="p-4 fade-in space-y-4 max-w-5xl mx-auto">
@@ -3054,12 +3159,8 @@ function renderCashierPOS() {
                   <button type="button" data-view-ticket="${t.id}" class="p-2 bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition" title="Ver Ticket Original">
                     <i data-lucide="receipt" class="w-4 h-4 pointer-events-none"></i>
                   </button>
-                  
                   <button type="button" onclick="window.requestEdit('${t.id}')" class="p-2 bg-warn/10 text-warn rounded-lg hover:bg-warn/20 transition" title="Editar Ticket">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 pointer-events-none">
-                      <line x1="18" y1="2" x2="22" y2="6"/>
-                      <path d="M7.5 20.5 2 22l1.5-5.5L17 3l4 4L7.5 20.5z"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 pointer-events-none"><line x1="18" y1="2" x2="22" y2="6"/><path d="M7.5 20.5 2 22l1.5-5.5L17 3l4 4L7.5 20.5z"/></svg>
                   </button>
                   <button type="button" onclick="window.requestRefund('${t.id}')" class="p-2 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition" title="Cancelar Ticket Completo">
                     <i data-lucide="rotate-ccw" class="w-4 h-4 pointer-events-none"></i>
@@ -3072,20 +3173,14 @@ function renderCashierPOS() {
     </div>`;
 
     posContent.querySelectorAll('[data-view-ticket]').forEach(btn => {
-      btn.onclick = () => {
-        showTicketFromHistory(btn.dataset.viewTicket);
-      };
+      btn.onclick = () => { showTicketFromHistory(btn.dataset.viewTicket); };
     });
   }
 
   function showTicketFromHistory(saleId) {
     const clickedSale = allRecords.find(r => r.id === saleId);
     if (!clickedSale) return;
-
-    const relatedSales = clickedSale.ticket_num 
-      ? allRecords.filter(r => r.type === 'sale' && r.ticket_num === clickedSale.ticket_num)
-      : [clickedSale]; 
-
+    const relatedSales = clickedSale.ticket_num ? allRecords.filter(r => r.type === 'sale' && r.ticket_num === clickedSale.ticket_num) : [clickedSale]; 
     const ticketNum = clickedSale.ticket_num || new Date(clickedSale.date || Date.now()).getTime().toString().slice(-4); 
     const dateOpts = { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
     const saleDate = clickedSale.date ? new Date(clickedSale.date) : new Date();
@@ -3094,8 +3189,6 @@ function renderCashierPOS() {
     const orderTotal = clickedSale.order_total || clickedSale.total;
     const cashPaid = clickedSale.cash_received || clickedSale.total;
     const change = clickedSale.change_returned || 0;
-
-    // ELIGE LA FUENTE CORRECTA DE LOS DATOS
     const itemsToPrint = clickedSale.items ? clickedSale.items : relatedSales;
 
     const itemsHtml = itemsToPrint.map(item => `
@@ -3126,13 +3219,10 @@ function renderCashierPOS() {
         <span class="flex-1 ml-2">DESCRIPCIÓN</span>
         <span class="text-right w-16">IMPORTE</span>
      </div>
-     <div class="w-full text-xs space-y-1">
-        ${itemsHtml}
-     </div>
+     <div class="w-full text-xs space-y-1">${itemsHtml}</div>
      <div class="w-full border-t-2 border-dashed border-gray-400 mt-2 mb-2"></div>
      <div class="w-full flex justify-between items-center text-base font-bold mb-2">
-        <span>TOTAL:</span>
-        <span class="text-lg">${currency(orderTotal)}</span>
+        <span>TOTAL:</span><span class="text-lg">${currency(orderTotal)}</span>
      </div>
      <div class="w-full border-t border-solid border-gray-300 mb-2"></div>
      <div class="w-full text-xs space-y-1">
@@ -3145,27 +3235,22 @@ function renderCashierPOS() {
       <div class="font-bold">¡GRACIAS POR SU COMPRA!</div>
       <div>Vuelva pronto</div>
       <div class="text-[10px] mt-2 text-gray-500">Este documento no es un comprobante fiscal</div>
-     </div>
-    `;
+     </div>`;
 
     document.getElementById('printable-ticket').innerHTML = ticketHtml;
     document.getElementById('receipt-modal').classList.remove('hidden');
-document.getElementById('receipt-modal').classList.add('flex');
+    document.getElementById('receipt-modal').classList.add('flex');
+    document.getElementById('btn-wa-ticket').style.display = 'none';
+    const waContainer = document.getElementById('wa-input-container');
+    if(waContainer) waContainer.style.display = 'none';
+    document.getElementById('btn-print-ticket').classList.add('col-span-2');
 
-// === OCULTAR BOTÓN E INPUT DE WHATSAPP EN HISTORIAL ===
-document.getElementById('btn-wa-ticket').style.display = 'none';
-const waContainer = document.getElementById('wa-input-container');
-if(waContainer) waContainer.style.display = 'none';
+    document.getElementById('receipt-close').onclick = () => {
+      document.getElementById('receipt-modal').classList.remove('flex');
+      document.getElementById('receipt-modal').classList.add('hidden');
+    };
+  }
 
-// NUEVA LÍNEA: Hace que Imprimir ocupe las 2 columnas
-document.getElementById('btn-print-ticket').classList.add('col-span-2');
-// ======================================================
-
-document.getElementById('receipt-close').onclick = () => {
-  document.getElementById('receipt-modal').classList.remove('flex');
-  document.getElementById('receipt-modal').classList.add('hidden');
-};
-}
   function renderCashierClose() {
     const mySales = records('sale').filter(s => s.cashier === (currentUser?.username||'') && sessionStart && s.date >= sessionStart);
     const salesTotal = mySales.reduce((a,s)=>a+(s.total||0),0);
@@ -3209,18 +3294,14 @@ document.getElementById('receipt-close').onclick = () => {
     realInput.oninput = updateDiff;
     updateDiff();
 
-
     document.getElementById('close-register').onclick = async () => {
       const btn = document.getElementById('close-register');
       btn.disabled = true; btn.textContent = 'Cerrando Caja...';
-      
       const realCash = parseFloat(realInput.value) || 0;
       const diff = realCash - expectedCash;
-      
       const currentSessionStart = sessionStart; 
       const userToClean = currentUser.username;
 
-      // 1. GENERAR Y ABRIR WHATSAPP INMEDIATAMENTE (Sin variables fantasma)
       try {
         if (defaultConfig.whatsapp_number) {
           const cleanNumber = String(defaultConfig.whatsapp_number).replace(/\D/g, ''); 
@@ -3238,16 +3319,11 @@ document.getElementById('receipt-close').onclick = () => {
               `Efectivo Esperado: ${currency(expectedCash)}%0A` +
               `Efectivo Real en Caja: ${currency(realCash)}%0A` +
               `*Diferencia: ${currency(diff)}* ${diff >= 0 ? '✅' : '⚠️'}`;
-
-            // Abrimos WhatsApp directo (al ser el primer comando, los navegadores no lo bloquean)
             window.open(`https://wa.me/${cleanNumber}?text=${waText}`, '_blank');
           }
         }
-      } catch (err) {
-        console.error('Error al generar WhatsApp:', err);
-      }
+      } catch (err) { console.error('Error al generar WhatsApp:', err); }
 
-      // 2. Guardamos en Firebase (Se ejecuta en segundo plano)
       await dbSdk.create({
         type:'cash_close', name: userToClean||'cajero', code:'', category:'', buy_price:0, sell_price:0, stock:0, min_stock:0,
         quantity: mySales.length, total: salesTotal, payment_method:'', cashier: userToClean||'', date: now(), amount: diff,
@@ -3260,33 +3336,173 @@ document.getElementById('receipt-close').onclick = () => {
         await dbSdk.update({ ...liveUser, session_open: false, session_start: null, initial_cash: 0 });
       }
 
-      // 3. Limpiamos variables locales y volvemos al login
-      cashRegisterOpen = false; 
-      cart = []; 
-      currentView = 'login';
-      
+      cashRegisterOpen = false; cart = []; currentView = 'login';
       localStorage.removeItem(`pos_register_open_${userToClean}`);
       localStorage.removeItem(`pos_initial_cash_${userToClean}`);
       localStorage.removeItem(`pos_session_start_${userToClean}`);
       localStorage.removeItem('pos_user'); 
       localStorage.setItem('pos_view', 'login');
-      
-      currentUser = null; 
-      sessionStart = null;
-      
+      currentUser = null; sessionStart = null;
       showToast('Caja cerrada correctamente');
       setTimeout(() => render(), 500);
     };
+  }
 
+  // --- VISTA DE PESTAÑA APARTADOS ---
+  function renderLayaways() {
+    const layaways = records('layaway').filter(l => l.status === 'pending');
+    posContent.innerHTML = `
+    <div class="p-4 fade-in space-y-4 max-w-6xl mx-auto h-full overflow-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="package-search" class="w-6 h-6 text-warn"></i> Apartados Pendientes</h2>
+      </div>
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        ${layaways.map(l => `
+          <div class="bg-surface rounded-xl p-5 border border-card shadow-md flex flex-col hover:border-warn/50 transition">
+             <div class="flex justify-between items-start mb-2">
+               <h3 class="font-bold text-txt text-lg truncate">${l.client || 'Cliente Desconocido'}</h3>
+               <span class="text-[10px] bg-warn/10 border border-warn/30 text-warn px-2 py-1 rounded font-bold uppercase tracking-wider">${(l.date || '').slice(0,10)}</span>
+             </div>
+             <p class="text-xs text-muted mb-4 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${l.phone || 'Sin número'}</p>
+             <div class="bg-bg rounded-lg p-3 space-y-1 mb-4 flex-1 overflow-auto border border-card">
+               ${(l.items || []).map(i=> `<div class="text-xs font-semibold text-txt flex justify-between"><span>${i.qty}x ${i.name}</span> <span class="text-muted">${currency(i.sell_price * i.qty)}</span></div>`).join('')}
+             </div>
+             <div class="border-t border-card pt-4 space-y-1.5 mb-4">
+               <div class="flex justify-between text-xs text-muted"><span>Total Original:</span><span>${currency(l.total)}</span></div>
+               <div class="flex justify-between text-xs text-muted"><span>Total Abonado:</span><span>${currency(l.advance)}</span></div>
+               <div class="flex justify-between text-lg font-extrabold text-warn mt-1"><span>Resta:</span><span>${currency((l.total || 0) - (l.advance || 0))}</span></div>
+             </div>
+             <button onclick="window.payLayaway('${l.id}')" class="w-full bg-success text-white font-bold py-3 rounded-lg hover:opacity-90 transition flex justify-center items-center gap-2 shadow-lg">
+               Abonar / Liquidar
+             </button>
+          </div>
+        `).join('') || '<div class="col-span-full flex flex-col items-center justify-center py-20 text-muted"><i data-lucide="package-x" class="w-12 h-12 mb-3 opacity-50"></i><p>No tienes apartados pendientes</p></div>'}
+      </div>
+    </div>`;
+  }
 
+  // --- LÓGICA DE ABONOS Y LIQUIDACIÓN ---
+  window.payLayaway = (id) => {
+    const l = records('layaway').find(x => x.id === id);
+    if(!l) return;
     
+    // Guardamos el ID en una variable global temporal anclada a la ventana
+    window._activeLayawayId = id;
+    const rem = l.total - l.advance;
+
+    document.getElementById('pay-layaway-client').textContent = l.client;
+    document.getElementById('pay-layaway-total').textContent = currency(l.total);
+    document.getElementById('pay-layaway-adv').textContent = currency(l.advance);
+    document.getElementById('pay-layaway-rem').textContent = currency(rem);
+    
+    document.getElementById('pay-layaway-amount').value = rem.toFixed(2);
+
+    document.getElementById('pay-layaway-modal').classList.remove('hidden');
+    document.getElementById('pay-layaway-modal').classList.add('flex');
+  };
+
+  const layawayCancelBtn = document.getElementById('layaway-cancel');
+  if(layawayCancelBtn) {
+    layawayCancelBtn.onclick = () => {
+      document.getElementById('layaway-modal').classList.add('hidden');
+      document.getElementById('layaway-modal').classList.remove('flex');
+    };
+  }
+
+  const layawayConfirmBtn = document.getElementById('layaway-confirm');
+  if(layawayConfirmBtn) {
+    layawayConfirmBtn.onclick = async () => {
+      const client = document.getElementById('layaway-client').value.trim();
+      const phone = document.getElementById('layaway-phone').value.trim();
+      const adv = parseFloat(document.getElementById('layaway-advance').value) || 0;
+      const total = cartTotal();
+
+      if(!client) return showToast('Escribe el nombre del cliente', 'warn');
+      if(adv <= 0 || adv >= total) return showToast('Anticipo debe ser mayor a $0 y menor al total', 'warn');
+
+      layawayConfirmBtn.disabled = true; layawayConfirmBtn.textContent = 'Guardando...';
+
+      await dbSdk.create({
+        type: 'layaway', client, phone, total, advance: adv, date: now(), status: 'pending', cashier: currentUser?.username||'',
+        items: cart.map(i => ({...i}))
+      });
+
+      await dbSdk.create({
+        type: 'sale', ticket_num: 'ANT-' + genId().slice(0,4).toUpperCase(), cashier: currentUser?.username || '',
+        date: now(), total: adv, order_total: adv, payment_method: 'Efectivo', cash_received: adv, change_returned: 0,
+        status: 'advance', name: `Anticipo de Apartado - ${client}`, items: []
+      });
+
+      showToast('Apartado guardado exitosamente', 'success');
+      document.getElementById('layaway-modal').classList.add('hidden');
+      document.getElementById('layaway-modal').classList.remove('flex');
+      layawayConfirmBtn.disabled = false; layawayConfirmBtn.textContent = 'Guardar Apartado';
+      cart = []; render();
+    };
+  }
+
+  const payLayawayCancelBtn = document.getElementById('pay-layaway-cancel');
+  if(payLayawayCancelBtn) {
+    payLayawayCancelBtn.onclick = () => {
+      document.getElementById('pay-layaway-modal').classList.add('hidden');
+      document.getElementById('pay-layaway-modal').classList.remove('flex');
+    };
+  }
+
+  const payLayawayConfirmBtn = document.getElementById('pay-layaway-confirm');
+  if(payLayawayConfirmBtn) {
+    payLayawayConfirmBtn.onclick = async () => {
+      const l = records('layaway').find(x => x.id === window._activeLayawayId);
+      if(!l) return;
+
+      const payAmount = parseFloat(document.getElementById('pay-layaway-amount').value) || 0;
+      const remainder = l.total - l.advance;
+
+      if(payAmount <= 0) return showToast('El abono debe ser mayor a 0', 'warn');
+      if(payAmount > remainder) return showToast('El abono no puede superar la deuda', 'error');
+
+      payLayawayConfirmBtn.disabled = true; payLayawayConfirmBtn.textContent = 'Registrando...';
+
+      const newAdvance = l.advance + payAmount;
+      const isFullyPaid = newAdvance >= l.total; 
+
+      await dbSdk.create({
+        type: 'sale', ticket_num: 'ABN-' + genId().slice(0,4).toUpperCase(), cashier: currentUser?.username || '',
+        date: now(), total: payAmount, order_total: payAmount, payment_method: 'Efectivo', cash_received: payAmount, change_returned: 0,
+        status: isFullyPaid ? 'liquidation' : 'abono', 
+        name: `${isFullyPaid ? 'Liquidación' : 'Abono'} de Apartado - ${l.client}`, 
+        items: isFullyPaid ? l.items : [] 
+      });
+
+      if (isFullyPaid) {
+        for (const item of l.items) {
+          const prodRec = allRecords.find(r => r.id === item.id);
+          if (prodRec) {
+            prodRec.stock = Math.max(0, Number(prodRec.stock) - Number(item.qty));
+            dbSdk.update(prodRec);
+          }
+        }
+        await dbSdk.update({ ...l, advance: newAdvance, status: 'completed' });
+        showToast('Apartado liquidado y stock descontado', 'success');
+      } else {
+        await dbSdk.update({ ...l, advance: newAdvance });
+        showToast(`Abono de ${currency(payAmount)} registrado`, 'success');
+      }
+
+      document.getElementById('pay-layaway-modal').classList.add('hidden');
+      document.getElementById('pay-layaway-modal').classList.remove('flex');
+      payLayawayConfirmBtn.disabled = false; payLayawayConfirmBtn.textContent = 'Registrar Pago';
+      render();
+    };
   }
 
   renderTabContent();
 }
+
+
 // ========== ESCUCHA MULTICAJA EN TIEMPO REAL (OPTIMIZADA) ==========
   
-const coleccionesCatalogos = ['productos', 'usuarios', 'categorias', 'configuracion', 'archivos_sistema', 'insumos_granel'];
+const coleccionesCatalogos = ['productos', 'usuarios', 'categorias', 'configuracion', 'archivos_sistema', 'insumos_granel', 'apartados'];
   
   coleccionesCatalogos.forEach(colName => {
     onSnapshot(collection(db, colName), procesarSnapshot);
@@ -3395,3 +3611,6 @@ const coleccionesCatalogos = ['productos', 'usuarios', 'categorias', 'configurac
 </script>
  </body>
 </html>
+
+
+  
