@@ -3348,38 +3348,214 @@ function renderCashierPOS() {
     };
   }
 
-  // --- VISTA DE PESTAÑA APARTADOS ---
+  // --- VISTA DE PESTAÑA APARTADOS CORREGIDA ---
   function renderLayaways() {
     const layaways = records('layaway').filter(l => l.status === 'pending');
     posContent.innerHTML = `
     <div class="p-4 fade-in space-y-4 max-w-6xl mx-auto h-full overflow-auto">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="package-search" class="w-6 h-6 text-warn"></i> Apartados Pendientes</h2>
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <i data-lucide="package-search" class="w-6 h-6 text-warn"></i> 
+          Apartados Pendientes
+        </h2>
       </div>
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         ${layaways.map(l => `
-          <div class="bg-surface rounded-xl p-5 border border-card shadow-md flex flex-col hover:border-warn/50 transition">
-             <div class="flex justify-between items-start mb-2">
+          <div class="bg-surface rounded-2xl p-5 border border-card shadow-lg flex flex-col hover:border-accent/30 transition relative group">
+             
+             <div class="flex justify-between items-center mb-4">
+                <span class="text-[10px] bg-card border border-card text-muted px-2 py-1 rounded-md font-bold uppercase tracking-widest">
+                  ${(l.date || '').slice(0,10)}
+                </span>
+                <div class="flex gap-1">
+                   <button onclick="window.editLayaway('${l.id}')" class="p-2 bg-accent/10 text-accent rounded-full hover:bg-accent hover:text-bg transition">
+  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+</button>
+                   <button onclick="window.deleteLayaway('${l.id}')" class="p-2 bg-danger/10 text-danger rounded-full hover:bg-danger hover:text-white transition" title="Cancelar Apartado">
+                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                   </button>
+                </div>
+             </div>
+
+             <div class="mb-4">
                <h3 class="font-bold text-txt text-lg truncate">${l.client || 'Cliente Desconocido'}</h3>
-               <span class="text-[10px] bg-warn/10 border border-warn/30 text-warn px-2 py-1 rounded font-bold uppercase tracking-wider">${(l.date || '').slice(0,10)}</span>
+               <p class="text-xs text-muted flex items-center gap-1 mt-1">
+                 <i data-lucide="phone" class="w-3 h-3 text-success"></i> ${l.phone || 'Sin número'}
+               </p>
              </div>
-             <p class="text-xs text-muted mb-4 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${l.phone || 'Sin número'}</p>
-             <div class="bg-bg rounded-lg p-3 space-y-1 mb-4 flex-1 overflow-auto border border-card">
-               ${(l.items || []).map(i=> `<div class="text-xs font-semibold text-txt flex justify-between"><span>${i.qty}x ${i.name}</span> <span class="text-muted">${currency(i.sell_price * i.qty)}</span></div>`).join('')}
+             
+             <div class="bg-black/30 rounded-xl p-3 space-y-2 mb-4 flex-1 border border-card/50">
+               ${(l.items || []).map(i=> `
+                 <div class="text-[11px] font-medium text-txt flex justify-between gap-2 border-b border-card/30 pb-1 last:border-0">
+                    <span class="truncate flex-1">${i.qty}x ${i.name}</span> 
+                    <span class="text-muted shrink-0">${currency(i.sell_price * i.qty)}</span>
+                 </div>`).join('')}
              </div>
-             <div class="border-t border-card pt-4 space-y-1.5 mb-4">
-               <div class="flex justify-between text-xs text-muted"><span>Total Original:</span><span>${currency(l.total)}</span></div>
-               <div class="flex justify-between text-xs text-muted"><span>Total Abonado:</span><span>${currency(l.advance)}</span></div>
-               <div class="flex justify-between text-lg font-extrabold text-warn mt-1"><span>Resta:</span><span>${currency((l.total || 0) - (l.advance || 0))}</span></div>
+
+             <div class="bg-card/20 rounded-xl p-3 space-y-1.5 mb-4 border border-card/30">
+               <div class="flex justify-between text-xs text-muted"><span>Total original:</span><span>${currency(l.total)}</span></div>
+               <div class="flex justify-between text-xs text-success font-semibold"><span>Total abonado:</span><span>${currency(l.advance)}</span></div>
+               <div class="flex justify-between text-base font-extrabold text-warn pt-1 border-t border-card/50 mt-1">
+                 <span>Resta:</span><span>${currency((l.total || 0) - (l.advance || 0))}</span>
+               </div>
              </div>
-             <button onclick="window.payLayaway('${l.id}')" class="w-full bg-success text-white font-bold py-3 rounded-lg hover:opacity-90 transition flex justify-center items-center gap-2 shadow-lg">
+
+             <button onclick="window.payLayaway('${l.id}')" class="w-full bg-success text-white font-bold py-3 rounded-xl hover:opacity-90 transition flex justify-center items-center gap-2 shadow-xl shadow-success/10 group">
+               <i data-lucide="hand-coins" class="w-5 h-5 group-hover:scale-110 transition"></i> 
                Abonar / Liquidar
              </button>
           </div>
-        `).join('') || '<div class="col-span-full flex flex-col items-center justify-center py-20 text-muted"><i data-lucide="package-x" class="w-12 h-12 mb-3 opacity-50"></i><p>No tienes apartados pendientes</p></div>'}
+        `).join('') || '<div class="col-span-full flex flex-col items-center justify-center py-20 text-muted opacity-50"><i data-lucide="package-x" class="w-12 h-12 mb-3"></i><p>No tienes apartados pendientes</p></div>'}
       </div>
     </div>`;
+    lucide.createIcons();
   }
+
+  window.editLayaway = (id) => {
+  const l = records('layaway').find(x => x.id === id);
+  if (!l) return;
+
+  const modal = document.createElement('div');
+  modal.className = "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm fade-in";
+  modal.innerHTML = `
+    <div class="bg-surface border border-card w-full max-w-md rounded-2xl p-6 shadow-2xl scale-in">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold flex items-center gap-2">
+          <i data-lucide="user-cog" class="text-accent"></i> Editar Contacto
+        </h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-muted hover:text-txt">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-muted mb-1 uppercase">Nombre del Cliente</label>
+          <input type="text" id="edit-name" value="${l.client}" 
+            class="w-full bg-bg border border-card rounded-lg px-4 py-2 text-txt focus:border-accent outline-none">
+        </div>
+        
+        <div>
+          <label class="block text-xs font-bold text-muted mb-1 uppercase">Teléfono / WhatsApp</label>
+          <input type="text" id="edit-phone" value="${l.phone || ''}" 
+            class="w-full bg-bg border border-card rounded-lg px-4 py-2 text-txt focus:border-accent outline-none">
+        </div>
+
+        <div class="pt-2">
+          <label class="block text-xs font-bold text-muted mb-1 uppercase opacity-50">Anticipo Inicial (No editable)</label>
+          <div class="w-full bg-card/50 border border-card rounded-lg px-4 py-2 text-muted cursor-not-allowed flex justify-between">
+            <span>Monto bloqueado</span>
+            <span class="font-bold">${currency(l.advance)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mt-8">
+        <button onclick="this.closest('.fixed').remove()" class="flex-1 py-3 rounded-xl bg-card text-txt font-bold hover:bg-card/80 transition text-sm">Cancelar</button>
+        <button id="save-edit-btn" class="flex-1 py-3 rounded-xl bg-accent text-bg font-bold hover:opacity-90 transition text-sm">Guardar Cambios</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  lucide.createIcons();
+
+  modal.querySelector('#save-edit-btn').onclick = async () => {
+    const newName = document.getElementById('edit-name').value.trim();
+    const newPhone = document.getElementById('edit-phone').value.trim();
+
+    if (!newName) return showToast("El nombre es obligatorio", "warn");
+
+    try {
+      // 1. ACTUALIZAR EL NOMBRE EN EL HISTORIAL DE VENTAS (COLECCIÓN 'sale')
+      const todasVentas = records('sale');
+      // Buscamos registros de anticipo o abono asociados al cliente viejo
+      const ventasRelacionadas = todasVentas.filter(v => 
+        (v.status === 'advance' || v.status === 'abono' || v.status === 'liquidation') && 
+        v.name.includes(l.client)
+      );
+
+      for (const venta of ventasRelacionadas) {
+        await dbSdk.update({
+          ...venta,
+          name: venta.name.replace(l.client, newName) // Actualiza el nombre en la descripción del ticket
+        });
+      }
+
+      // 2. ACTUALIZAR EL APARTADO
+      await dbSdk.update({ 
+        ...l, 
+        client: newName, 
+        phone: newPhone
+      });
+
+      showToast("Datos actualizados correctamente", "success");
+      modal.remove();
+      render(); 
+      
+    } catch (e) {
+      console.error(e);
+      showToast("Error al guardar cambios", "error");
+    }
+  };
+};
+
+// --- FUNCIÓN PARA ELIMINAR APARTADO (COMO LA TENÍAMOS) ---
+window.deleteLayaway = (id) => {
+  const l = records('layaway').find(x => x.id === id);
+  if (!l) return;
+
+  showConfirm(`¿Cancelar el apartado de "${l.client}"? Esto restará ${currency(l.advance)} de la ganancia actual.`, async () => {
+    try {
+      await dbSdk.create({
+        type: 'sale',
+        ticket_num: 'CAN-' + genId().slice(0, 4).toUpperCase(),
+        cashier: currentUser?.username || 'admin',
+        date: now(),
+        total: -l.advance, 
+        order_total: -l.advance,
+        payment_method: 'Efectivo',
+        status: 'cancelled_layaway',
+        name: `Cancelación Apartado: ${l.client}`,
+        items: []
+      });
+
+      await dbSdk.delete({ type: 'layaway', id: l.id });
+      showToast('Apartado eliminado y ganancia ajustada', 'success');
+      render();
+    } catch (e) {
+      showToast('Error al cancelar', 'error');
+    }
+  });
+};
+
+  // --- FUNCIÓN PARA ELIMINAR APARTADO Y DINERO ---
+  window.deleteLayaway = (id) => {
+      const l = records('layaway').find(x => x.id === id);
+      if(!l) return;
+
+      showConfirm(`¿Cancelar el apartado de "${l.client}"? Esto anulará los ${currency(l.advance)} que han entrado a caja.`, async () => {
+        try {
+          // 1. Crear un movimiento negativo (Egreso) para que el dinero salga de la caja hoy
+          await dbSdk.create({
+            type: 'expense',
+            amount: l.advance,
+            description: `ANULACIÓN APARTADO: ${l.client}`,
+            category: 'Anulación',
+            date: now(),
+            cashier: currentUser?.username || 'admin'
+          });
+
+          // 2. Eliminar el apartado
+          await dbSdk.delete({ type: 'layaway', id: l.id });
+          
+          showToast('Apartado cancelado y dinero descontado de caja', 'success');
+          render();
+        } catch (e) {
+          showToast('Error al cancelar', 'error');
+        }
+      });
+    };
 
   // --- LÓGICA DE ABONOS Y LIQUIDACIÓN ---
   window.payLayaway = (id) => {
