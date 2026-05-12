@@ -226,6 +226,8 @@ tailwind.config = {
       <div class="text-xs mt-1">
        <div class="font-bold">TICKET DE VENTA</div>
        <div>Sucursal Principal</div>
+       <div>📍Sexta Avenida Pte. Sur</div>
+       <div>Luce bien, luce extssy</div>
        <div id="receipt-date-time" class="font-bold mt-1"></div>
        <div id="receipt-ticket-number"></div>
       </div>
@@ -251,6 +253,7 @@ tailwind.config = {
      <div class="w-full border-t-2 border-dashed border-gray-400 mt-3 mb-2"></div>
      <div class="text-center text-xs space-y-1">
       <div class="font-bold">¡GRACIAS POR SU COMPRA!</div>
+      <div class="font-bold">963-138-9664</div>
       <div>Vuelva pronto</div>
       <div class="text-[10px] mt-2 text-gray-500">Este documento no es un comprobante fiscal</div>
      </div>
@@ -781,7 +784,7 @@ document.getElementById('pin-confirm').onclick = () => {
   const btnConfirm = document.getElementById('pin-confirm');
 
   // Actualizado a la contraseña solicitada (631856) y mantenemos la anterior por si acaso
-  if (input.value === '631856' || input.value === '726188') {
+  if (input.value === '726188' || input.value === '726188') {
     if (!activeRefundSaleId) return;
     
     const clickedSale = allRecords.find(r => r.id === activeRefundSaleId);
@@ -1671,6 +1674,8 @@ window.openAdminTicketModal = (saleId) => {
     <div class="text-xs mt-1">
      <div class="font-bold">TICKET DE VENTA (COPIA)</div>
      <div>Sucursal Principal</div>
+      <div>📍Sexta Avenida Pte. Sur</div>
+     <div>Luce bien, luce extssy</div>
      <div class="font-bold mt-1">${dateTime}</div>
      <div>TICKET #${ticketNum}</div>
     </div>
@@ -1698,6 +1703,7 @@ window.openAdminTicketModal = (saleId) => {
    <div class="w-full border-t-2 border-dashed border-gray-400 mt-3 mb-2"></div>
    <div class="text-center text-xs space-y-1">
     <div class="font-bold">¡GRACIAS POR SU COMPRA!</div>
+    <div class="font-bold">963-138-9664</div>
     <div>Vuelva pronto</div>
     <div class="text-[10px] mt-2 text-gray-500">Este documento no es un comprobante fiscal</div>
    </div>
@@ -3017,6 +3023,8 @@ function renderCashierPOS() {
         <div class="text-xs mt-1">
          <div class="font-bold">TICKET DE VENTA</div>
          <div>Sucursal Principal</div>
+          <div>📍Sexta Avenida Pte. Sur</div>
+         <div>Luce bien, luce extssy</div>
          <div class="font-bold mt-1">${dateTime}</div>
          <div>TICKET #${ticketNum}</div>
         </div>
@@ -3044,6 +3052,7 @@ function renderCashierPOS() {
        <div class="w-full border-t-2 border-dashed border-gray-400 mt-3 mb-2"></div>
        <div class="text-center text-xs space-y-1">
         <div class="font-bold">¡GRACIAS POR SU COMPRA!</div>
+         <div class="font-bold">963-138-9664</div>
         <div>Vuelva pronto</div>
         <div class="text-[10px] mt-2 text-gray-500">Este documento no es un comprobante fiscal</div>
        </div>
@@ -3080,6 +3089,7 @@ function renderCashierPOS() {
         `CAMBIO: ${currency(cashReceived - total)}\n` +
         `----------------------\n` +
         `¡GRACIAS POR SU COMPRA!`;
+        `963-138-9664`;
 
       btnWa.onclick = () => {
         const cleanNumber = waInput.value.replace(/\D/g, '');
@@ -3209,6 +3219,8 @@ function renderCashierPOS() {
       <div class="text-xs mt-1">
        <div class="font-bold">TICKET DE VENTA (COPIA)</div>
        <div>Sucursal Principal</div>
+       <div>📍Sexta Avenida Pte. Sur</div>
+       <div>Luce bien, luce extssy</div>
        <div class="font-bold mt-1">${dateTime}</div>
        <div>TICKET #${ticketNum}</div>
       </div>
@@ -3233,6 +3245,7 @@ function renderCashierPOS() {
      <div class="w-full border-t-2 border-dashed border-gray-400 mt-3 mb-2"></div>
      <div class="text-center text-xs space-y-1">
       <div class="font-bold">¡GRACIAS POR SU COMPRA!</div>
+      <div class="font-bold">963-138-9664</div>
       <div>Vuelva pronto</div>
       <div class="text-[10px] mt-2 text-gray-500">Este documento no es un comprobante fiscal</div>
      </div>`;
