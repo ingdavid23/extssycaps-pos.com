@@ -271,14 +271,13 @@ tailwind.config = {
    </div>
   </div>
 
-  <!-- 👇 PEGA EL MODAL DEL CÓDIGO DE BARRAS AQUÍ 👇 -->
   <div id="barcode-modal" class="fixed inset-0 z-[10000] hidden items-center justify-center p-4" style="background:rgba(0,0,0,.8)">
     <div class="bg-surface rounded-2xl p-6 max-w-sm w-full mx-auto modal-show flex flex-col items-center border border-card shadow-2xl">
-      <h2 class="text-xl font-bold mb-4 text-center flex items-center gap-2"><i data-lucide="barcode" class="w-5 h-5 text-accent"></i> Etiqueta de Producto</h2>
+      <h2 class="text-xl font-bold mb-4 text-center flex items-center gap-2"><i data-lucide="barcode" class="text-accent w-5 h-5"></i> Etiqueta de Producto</h2>
       
-      <!-- Contenedor blanco para que el escáner pueda leer el código negro -->
-      <div id="printable-barcode" class="bg-white p-4 rounded-lg flex flex-col items-center justify-center w-full mb-5 shadow-inner">
-         <div id="barcode-prod-name" class="font-bold text-black text-sm mb-2 text-center uppercase tracking-tight"></div>
+      <div id="printable-barcode" class="bg-white p-5 rounded-xl flex flex-col items-center justify-center w-full mb-5 shadow-inner border border-gray-200">
+         <div id="barcode-prod-name" class="font-extrabold text-black text-sm mb-1 text-center uppercase tracking-tight line-clamp-2 leading-tight"></div>
+         <div id="barcode-prod-price" class="font-black text-black text-xl mb-3 text-center tracking-tight"></div>
          <svg id="barcode-svg" class="max-w-full"></svg>
       </div>
       
@@ -288,7 +287,6 @@ tailwind.config = {
       </div>
     </div>
   </div>
-  <!-- ☝️ HASTA AQUÍ ☝️ -->
 
 
   <div id="layaway-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center p-4" style="background:rgba(0,0,0,.8)">
@@ -1211,21 +1209,14 @@ function renderInventory(container) {
     lucide.createIcons();
   }
 
-  // === FUNCIONES GLOBALES PARA EL CÓDIGO DE BARRAS ===
-  window.generateBarcode = async (id) => {
+ // === LOGICA DE CODIGOS DE BARRA ACTUALIZADA CON PRECIO ===
+ window.generateBarcode = async (id) => {
      const prod = records('product').find(p => p.id === id);
      if(!prod) return;
-     
-     // Genera un código numérico único de 12 dígitos aleatorios
-     const newCode = Math.floor(Math.random() * 899999999999 + 100000000000).toString();
-     prod.code = newCode;
-     
-     // Guardamos en Firebase
-     await dbSdk.update(prod);
-     showToast('Código de barras generado', 'success');
-     
-     // Actualizamos tabla y abrimos el modal para imprimir
-     renderList();
+     prod.code = Math.floor(Math.random() * 899999999999 + 100000000000).toString();
+     await dbSdk.update(prod); 
+     showToast('Código generado', 'success');
+     renderList(); 
      window.showBarcode(id);
   };
 
@@ -1233,21 +1224,23 @@ function renderInventory(container) {
      const prod = records('product').find(p => p.id === id);
      if(!prod || !prod.code) return;
      
+     // Inyectamos el nombre y el precio formateado con tu helper currency()
      document.getElementById('barcode-prod-name').textContent = prod.name;
+     document.getElementById('barcode-prod-price').textContent = currency(prod.sell_price);
      
-     // Usar JsBarcode para dibujar la imagen
-     JsBarcode("#barcode-svg", prod.code, {
-        format: "CODE128", // Formato universal compatible con escáneres
-        lineColor: "#000000",
-        width: 2,
-        height: 50,
-        displayValue: true,
-        fontSize: 14,
-        margin: 0
+     // Renderizamos el código de barras limpio
+     JsBarcode("#barcode-svg", prod.code, { 
+        format: "CODE128", 
+        lineColor: "#000000", 
+        width: 2, 
+        height: 50, 
+        displayValue: true, 
+        fontSize: 13, 
+        margin: 0 
      });
      
      const modal = document.getElementById('barcode-modal');
-     modal.classList.remove('hidden');
+     modal.classList.remove('hidden'); 
      modal.classList.add('flex');
      lucide.createIcons();
   };
