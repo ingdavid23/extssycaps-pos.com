@@ -517,7 +517,10 @@ const DEFAULT_USERS = [
 
 // ========== HELPERS ==========
 function currency(n) {
-  return defaultConfig.currency_symbol + Number(n || 0).toFixed(2);
+  return defaultConfig.currency_symbol + Number(n || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 }
 function bizName() {
   return defaultConfig.business_name;
