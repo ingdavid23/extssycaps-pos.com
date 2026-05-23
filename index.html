@@ -2048,7 +2048,7 @@ async function renderSalesReport(container) {
   };
 }
 
-// ========== FINANCE ==========
+// ========== FINANCE CON GRÁFICA PROFESIONAL ==========
 window.financeDate = window.financeDate || new Date();
 
 async function renderFinance(container) {
@@ -2090,24 +2090,6 @@ async function renderFinance(container) {
     dailySales[d-1] += (s.total || 0); 
   });
 
-  const maxSale = Math.max(...dailySales, 1); 
-
-  const chartHtml = dailySales.map((total, i) => {
-    const heightPct = (total / maxSale) * 100;
-    return `
-      <div class="flex flex-col items-center flex-1 group relative cursor-pointer justify-end pt-8">
-        <div class="w-full bg-accent/10 rounded-t-sm flex items-end justify-center h-40 sm:h-48 relative group-hover:bg-accent/20 transition">
-          <div class="w-full bg-accent rounded-t-sm transition-all duration-500" style="height: ${heightPct}%;"></div>
-          
-          <div class="absolute bottom-full mb-2 hidden group-hover:block bg-bg border border-card text-txt text-[11px] px-2 py-1.5 rounded shadow-xl whitespace-nowrap z-[100] font-bold">
-            Día ${i+1}: ${currency(total)}
-          </div>
-        </div>
-        <div class="text-[10px] text-muted mt-2 w-full text-center truncate">${i+1}</div>
-      </div>
-    `;
-  }).join('');
-
   container.innerHTML = `
   <div class="fade-in space-y-5 pb-10">
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -2136,11 +2118,11 @@ async function renderFinance(container) {
     </div>
 
     <div class="bg-surface rounded-xl p-5 border border-card shadow-sm">
-      <h3 class="font-semibold mb-2 text-sm text-muted flex items-center gap-2">
-        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Ventas Diarias de ${monthName}
+      <h3 class="font-semibold mb-4 text-sm text-muted flex items-center gap-2">
+        <i data-lucide="activity" class="w-4 h-4 text-success"></i> Tendencia de Ingresos - ${monthName}
       </h3>
-      <div class="flex items-end gap-[2px] sm:gap-1 w-full border-b border-card pb-1">
-        ${chartHtml}
+      <div class="w-full h-64 relative">
+        <canvas id="financeChart"></canvas>
       </div>
     </div>
 
@@ -2193,6 +2175,86 @@ async function renderFinance(container) {
     </div>
   </div>`;
 
+  lucide.createIcons();
+
+  // --- LÓGICA PARA RENDERIZAR LA GRÁFICA CON CHART.JS ---
+  const renderChart = () => {
+    const ctx = document.getElementById('financeChart').getContext('2d');
+    
+    // Crear el gradiente verde para el fondo debajo de la línea
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)'); // Verde con 40% de opacidad
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');   // Transparente hacia abajo
+
+    const labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
+
+    if (window.financeChartInstance) {
+      window.financeChartInstance.destroy();
+    }
+
+    window.financeChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Ingresos Diarios',
+          data: dailySales,
+          borderColor: '#10b981', // Verde success
+          backgroundColor: gradient,
+          borderWidth: 2,
+          pointBackgroundColor: '#121212', // Fondo oscuro del punto
+          pointBorderColor: '#10b981', // Borde verde del punto
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.4 // Esto hace que la línea sea curva (smooth)
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#262626',
+            titleColor: '#ffffff',
+            bodyColor: '#10b981',
+            callbacks: {
+              label: function(context) { return currency(context.raw); },
+              title: function(context) { return `Día ${context[0].label} de ${monthName}`; }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: '#262626' }, // Líneas de fondo oscuras
+            ticks: {
+              color: '#a3a3a3',
+              callback: function(value) { return currency(value); }
+            }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { color: '#a3a3a3' }
+          }
+        }
+      }
+    });
+  };
+
+  // Cargar Chart.js dinámicamente si no existe, luego dibujar
+  if (typeof Chart === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = renderChart;
+    document.head.appendChild(script);
+  } else {
+    renderChart();
+  }
+
+  // --- RESTO DE EVENTOS DE FINANZAS ---
   document.getElementById('exp-date').value = today();
 
   document.getElementById('fin-prev').onclick = () => {
@@ -2228,7 +2290,10 @@ async function renderFinance(container) {
     });
     
     btn.disabled = false; btn.textContent = 'Registrar Egreso';
-    if (res.isOk) { showToast('Egreso registrado'); }
+    if (res.isOk) { 
+      showToast('Egreso registrado'); 
+      renderFinance(container); // Recargar gráfica tras nuevo egreso
+    }
     else showToast('Error al registrar','error');
   };
 
@@ -2238,11 +2303,10 @@ async function renderFinance(container) {
       if (rec) showConfirm('¿Eliminar este egreso permanentemente?', async () => {
         await dbSdk.delete(rec);
         showToast('Egreso eliminado');
+        renderFinance(container);
       });
     };
   });
-
-  lucide.createIcons();
 }
 
 
