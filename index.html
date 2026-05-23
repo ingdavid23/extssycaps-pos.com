@@ -333,6 +333,28 @@ tailwind.config = {
   </div>
 </div>
 
+<!-- MODAL DE DESCUENTOS -->
+<div id="discount-modal" class="fixed inset-0 z-[10000] hidden items-center justify-center p-4" style="background:rgba(0,0,0,.8)">
+  <div class="bg-surface rounded-2xl p-6 max-w-sm w-full mx-auto modal-show flex flex-col border border-card shadow-2xl">
+    <h2 class="text-xl font-bold mb-4 text-center flex items-center justify-center gap-2"><i data-lucide="tag" class="text-accent w-5 h-5"></i> Aplicar Descuento</h2>
+    
+    <div class="flex gap-2 mb-4">
+      <button type="button" id="desc-type-percent" onclick="window.setDiscountType('percent')" class="flex-1 py-2 rounded-lg bg-accent text-white font-bold transition">Porcentaje (%)</button>
+      <button type="button" id="desc-type-amount" onclick="window.setDiscountType('amount')" class="flex-1 py-2 rounded-lg bg-card text-muted hover:bg-surface transition">Monto Fijo ($)</button>
+    </div>
+    
+    <div>
+      <label id="desc-label" class="block text-sm text-muted mb-1 font-medium text-center">Porcentaje a descontar (%)</label>
+      <input id="desc-value" type="number" min="0" step="0.01" class="w-full bg-bg border border-card rounded-xl px-4 py-3 text-3xl font-bold focus:border-accent focus:outline-none text-center text-success" placeholder="0">
+    </div>
+    
+    <div class="w-full flex gap-3 mt-6">
+      <button type="button" onclick="window.closeDiscountModal()" class="flex-1 bg-card text-muted font-semibold py-3 rounded-xl hover:bg-surface transition border border-card">Cancelar</button>
+      <button type="button" onclick="window.applyDiscount()" class="flex-1 bg-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition shadow-lg shadow-accent/20">Aplicar</button>
+    </div>
+  </div>
+</div>
+
   <script type="module">
    // Función de COMPRESIÓN EXTREMA para Firebase
    // Función de COMPRESIÓN BALANCEADA para Productos
@@ -860,6 +882,122 @@ document.getElementById('pin-confirm').onclick = () => {
   } else {
     showToast('Clave incorrecta', 'error');
     input.value = ''; input.focus();
+  }
+};
+
+// ========== LÓGICA DE DESCUENTOS ==========
+window.activeDiscountType = 'percent';
+
+window.openDiscountModal = () => {
+  // Verificamos que el carrito tenga productos (ignorando descuentos previos)
+  const realItems = cart.filter(i => !String(i.id).startsWith('desc_'));
+  if(realItems.length === 0) return showToast('Agrega productos antes de aplicar un descuento', 'warn');
+  
+  document.getElementById('desc-value').value = '';
+  document.getElementById('discount-modal').classList.remove('hidden');
+  document.getElementById('discount-modal').classList.add('flex');
+  setTimeout(() => document.getElementById('desc-value').focus(), 100);
+};
+
+window.setDiscountType = (type) => {
+  window.activeDiscountType = type;
+  const btnPct = document.getElementById('desc-type-percent');
+  const btnAmt = document.getElementById('desc-type-amount');
+  const label = document.getElementById('desc-label');
+
+  if(type === 'percent') {
+    btnPct.className = 'flex-1 py-2 rounded-lg bg-accent text-white font-bold transition';
+    btnAmt.className = 'flex-1 py-2 rounded-lg bg-card text-muted hover:bg-surface transition';
+    label.textContent = 'Porcentaje a descontar (%)';
+  } else {
+    btnAmt.className = 'flex-1 py-2 rounded-lg bg-accent text-white font-bold transition';
+    btnPct.className = 'flex-1 py-2 rounded-lg bg-card text-muted hover:bg-surface transition';
+    label.textContent = 'Monto directo a descontar ($)';
+  }
+};
+
+// ========== LÓGICA DE DESCUENTOS ==========
+window.activeDiscountType = 'percent';
+
+window.openDiscountModal = () => {
+  // Asegurarnos de que hay artículos en el carrito ignorando los descuentos
+  const realItems = cart.filter(i => !String(i.id).startsWith('desc_'));
+  if(realItems.length === 0) return showToast('Agrega productos antes de aplicar un descuento', 'warn');
+  
+  document.getElementById('desc-value').value = '';
+  document.getElementById('discount-modal').classList.remove('hidden');
+  document.getElementById('discount-modal').classList.add('flex');
+  setTimeout(() => document.getElementById('desc-value').focus(), 100);
+};
+
+window.setDiscountType = (type) => {
+  window.activeDiscountType = type;
+  const btnPct = document.getElementById('desc-type-percent');
+  const btnAmt = document.getElementById('desc-type-amount');
+  const label = document.getElementById('desc-label');
+
+  if(type === 'percent') {
+    btnPct.className = 'flex-1 py-2 rounded-lg bg-accent text-white font-bold transition';
+    btnAmt.className = 'flex-1 py-2 rounded-lg bg-card text-muted hover:bg-surface transition';
+    label.textContent = 'Porcentaje a descontar (%)';
+  } else {
+    btnAmt.className = 'flex-1 py-2 rounded-lg bg-accent text-white font-bold transition';
+    btnPct.className = 'flex-1 py-2 rounded-lg bg-card text-muted hover:bg-surface transition';
+    label.textContent = 'Monto directo a descontar ($)';
+  }
+};
+
+window.applyDiscount = () => {
+  const val = parseFloat(document.getElementById('desc-value').value);
+  
+  if(isNaN(val) || val <= 0) {
+    showToast('Ingresa un valor mayor a 0', 'warn');
+    return;
+  }
+
+  // 1. Limpiamos cualquier descuento anterior en el carrito
+  cart = cart.filter(i => !String(i.id).startsWith('desc_'));
+
+  // 2. Calculamos el subtotal real
+  const subtotal = cart.reduce((suma, item) => suma + (item.sell_price * item.qty), 0);
+  let discountAmount = 0;
+
+  // 3. Validamos según el tipo de descuento
+  if(window.activeDiscountType === 'percent') {
+    if(val > 100) {
+      showToast('No puedes descontar más del 100%', 'warn');
+      return;
+    }
+    discountAmount = subtotal * (val / 100);
+  } else {
+    if(val > subtotal) {
+      showToast('El descuento no puede superar el total a pagar', 'warn');
+      return;
+    }
+    discountAmount = val;
+  }
+
+  // 4. Inyectamos el descuento al carrito
+  cart.push({
+    id: 'desc_' + genId(),
+    name: `Descuento (${window.activeDiscountType === 'percent' ? val + '%' : '$' + val.toFixed(2)})`,
+    sell_price: -discountAmount,
+    buy_price: 0,
+    qty: 1,
+    maxStock: 999999
+  });
+
+  // 5. Cerramos el modal, mostramos aviso y recargamos pantalla
+  window.closeDiscountModal();
+  showToast('Descuento aplicado correctamente', 'success');
+  render(); 
+};
+
+window.closeDiscountModal = () => {
+  const modal = document.getElementById('discount-modal');
+  if(modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
   }
 };
 // ========== RENDERING ==========
@@ -2751,7 +2889,12 @@ function renderCashierPOS() {
         </div>
         <div id="cart-items" class="flex-1 overflow-auto p-3 space-y-2"></div>
         <div class="p-4 border-t border-card space-y-3">
-          <div class="flex justify-between text-lg font-bold"><span>Total</span><span class="text-success">${currency(cartTotal())}</span></div>
+          <div class="flex justify-between items-center text-lg font-bold mb-2">
+  <button type="button" onclick="window.openDiscountModal()" class="text-xs bg-accent/10 border border-accent/20 text-accent px-3 py-1.5 rounded-lg hover:bg-accent hover:text-bg transition flex items-center gap-1.5 shadow-sm" title="Aplicar descuento al carrito">
+    <i data-lucide="tag" class="w-3.5 h-3.5 pointer-events-none"></i> Descuento
+  </button>
+  <div class="flex gap-2"><span>Total:</span><span class="text-success">${currency(cartTotal())}</span></div>
+</div>
           <div class="flex gap-2">
             <button data-pay="Efectivo" class="flex-1 py-2 rounded-lg text-sm font-semibold transition ${paymentMethod==='Efectivo'?'bg-success text-white':'bg-card text-muted hover:bg-bg'}">Efectivo</button>
             <button data-pay="Transfer" class="flex-1 py-2 rounded-lg text-sm font-semibold transition ${paymentMethod==='Transfer'?'bg-accent2 text-white':'bg-card text-muted hover:bg-bg'}">Transfer</button>
