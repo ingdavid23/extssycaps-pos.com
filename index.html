@@ -1202,7 +1202,19 @@ async function renderDashboard(container) {
   const totalRevenue = sales.reduce((a,s) => a + (s.total||0), 0);
   const todayRevenue = todaySales.reduce((a,s) => a + (s.total||0), 0);
   const totalExpenses = expenses.reduce((a,e) => a + (e.amount||0), 0);
-  const profit = totalRevenue - totalExpenses;
+  
+  // Calcular Costo de lo Vendido (Utilidad Real)
+  let totalCosto = 0;
+  sales.forEach(s => {
+    // Evitamos contar el costo de productos en abonos parciales, solo en liquidaciones o ventas directas
+    if(s.status === 'advance' || s.status === 'abono') return; 
+    const items = s.items || [];
+    items.forEach(i => {
+       totalCosto += (Number(i.buy_price) || 0) * (Number(i.quantity || i.qty) || 1);
+    });
+  });
+  
+  const profit = totalRevenue - totalExpenses - totalCosto;
   const lowStock = products.filter(p => p.stock <= (p.min_stock||5));
 
   // Calcular más vendidos correctamente
@@ -1468,6 +1480,11 @@ function renderInventory(container) {
           </div>
 
           <div class="flex flex-col gap-1">
+            <label class="text-xs text-muted">P. Compra</label>
+            <input id="prod-buy" type="number" step="0.01" class="bg-card border border-card rounded-lg px-3 py-2 text-sm focus:border-accent focus:outline-none" placeholder="0.00">
+          </div>
+
+          <div class="flex flex-col gap-1">
             <label class="text-xs text-muted">P. Venta *</label>
             <input id="prod-sell" type="number" step="0.01" class="bg-card border border-card rounded-lg px-3 py-2 text-sm focus:border-accent focus:outline-none" placeholder="0.00" required>
           </div>
@@ -1700,7 +1717,7 @@ function renderInventory(container) {
       name: newName,
       code: document.getElementById('prod-code').value.trim() || genId().slice(0,8).toUpperCase(),
       category: document.getElementById('prod-cat').value,
-      buy_price: editingProduct ? editingProduct.buy_price : 0,
+      buy_price: parseFloat(document.getElementById('prod-buy').value) || 0,
       sell_price: parseFloat(document.getElementById('prod-sell').value),
       stock: parseFloat(document.getElementById('prod-stock').value) || 0,
       min_stock: 5,
@@ -2218,7 +2235,18 @@ async function renderFinance(container) {
 
   const totalIncome = monthSales.reduce((a,s) => a+(s.total||0), 0);
   const totalExpense = monthExpenses.reduce((a,e) => a+(e.amount||0), 0);
-  const profit = totalIncome - totalExpense;
+  
+  // Calcular Costo de lo Vendido del Mes (Utilidad Real)
+  let monthCosto = 0;
+  monthSales.forEach(s => {
+    if(s.status === 'advance' || s.status === 'abono') return; 
+    const items = s.items || [];
+    items.forEach(i => {
+       monthCosto += (Number(i.buy_price) || 0) * (Number(i.quantity || i.qty) || 1);
+    });
+  });
+
+  const profit = totalIncome - totalExpense - monthCosto;
 
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const dailySales = Array(daysInMonth).fill(0);
@@ -3211,7 +3239,7 @@ function renderCashierPOS() {
         date: now(), total: total, order_total: total, payment_method: paymentMethod,
         cash_received: cashReceived, change_returned: cashReceived - total, status: 'completed',
         items: cart.map(item => ({
-          id: item.id, name: item.name, quantity: item.qty, sell_price: item.sell_price, total: item.sell_price * item.qty
+          id: item.id, name: item.name, quantity: item.qty, buy_price: item.buy_price || 0, sell_price: item.sell_price, total: item.sell_price * item.qty
         }))
       };
 
