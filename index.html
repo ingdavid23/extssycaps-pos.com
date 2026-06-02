@@ -1671,6 +1671,7 @@ function renderInventory(container) {
       document.getElementById('prod-name').value = editingProduct.name;
       document.getElementById('prod-code').value = editingProduct.code || '';
       document.getElementById('prod-cat').value = editingProduct.category || '';
+      document.getElementById('prod-buy').value = editingProduct.buy_price || 0; // <-- Esta es la línea que faltaba
       document.getElementById('prod-sell').value = editingProduct.sell_price;
       document.getElementById('prod-stock').value = editingProduct.stock;
       
